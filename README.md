@@ -2,8 +2,9 @@
 ObsCure Text Editor is a tool for editing text from this franchise, designed for Nintendo Wii, PC, PS2, PS3 and Xbox 360.
 
 ## IMAGE
-<img width="462" height="202" alt="image" src="https://github.com/user-attachments/assets/4812192e-466c-45a5-8da0-5cd085310781" />
-<img width="458" height="197" alt="image" src="https://github.com/user-attachments/assets/62ac8608-85b9-408f-a10e-c91d4ece9abe" />
+
+<img width="460" height="202" alt="image" src="https://github.com/user-attachments/assets/cb698563-ea55-4091-9e12-9d7326b2dc43" />
+<img width="460" height="198" alt="image" src="https://github.com/user-attachments/assets/04bb36b3-a4f0-444b-9145-d10212abc05e" />
 
 ## VALIDATION
 
