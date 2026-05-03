@@ -37,8 +37,9 @@ public class MainForm : Form
         };
         _gameCombo.Items.AddRange(new object[]
         {
-            "Obscure 1 (PC / PS2 — big-endian)",
-            "Obscure 2 (all platforms — little-endian)"
+            "Obscure 1 (all platforms — big-endian)",
+            "Obscure 2 (all platforms — little-endian)",
+            "Final Exam (PC / PS3)"
         });
         _gameCombo.SelectedIndex = 0;
 
@@ -84,7 +85,16 @@ public class MainForm : Form
     {
         0 => GameType.Obscure1,
         1 => GameType.Obscure2,
+        2 => GameType.FinalExam,
         _ => GameType.Obscure1
+    };
+
+    private static string GameLabel(GameType g) => g switch
+    {
+        GameType.Obscure1 => "OB1",
+        GameType.Obscure2 => "OB2",
+        GameType.FinalExam => "FE",
+        _ => "?"
     };
 
     private void OnExtractClick(object? sender, EventArgs e)
@@ -108,11 +118,11 @@ public class MainForm : Form
             {
                 GameType.Obscure1 => ObscureLng.ExtractOb1ToTxt(lngPath, txtPath),
                 GameType.Obscure2 => ObscureLng.ExtractOb2ToTxt(lngPath, txtPath, DefaultEncoding),
+                GameType.FinalExam => ObscureLng.ExtractFinalExamToTxt(lngPath, txtPath),
                 _ => 0
             };
 
-            string label = game == GameType.Obscure1 ? "OB1" : "OB2";
-            SetStatus($"{label} — extracted {count} entries → {Path.GetFileName(txtPath)}");
+            SetStatus($"{GameLabel(game)} — extracted {count} entries → {Path.GetFileName(txtPath)}");
 
             MessageBox.Show(this,
                 $"Extracted to:\n{txtPath}",
@@ -155,13 +165,15 @@ public class MainForm : Form
             {
                 case GameType.Obscure1:
                     ObscureLng.RebuildOb1FromTxt(txtPath, outLng);
-                    SetStatus($"OB1 — rebuilt → {Path.GetFileName(outLng)}");
                     break;
                 case GameType.Obscure2:
                     ObscureLng.RebuildOb2FromTxt(txtPath, outLng, DefaultEncoding, addNullTerminator: false);
-                    SetStatus($"OB2 — rebuilt → {Path.GetFileName(outLng)}");
+                    break;
+                case GameType.FinalExam:
+                    ObscureLng.RebuildFinalExamFromTxt(txtPath, outLng);
                     break;
             }
+            SetStatus($"{GameLabel(game)} — rebuilt → {Path.GetFileName(outLng)}");
 
             MessageBox.Show(this,
                 $"Rebuilt .lng saved to:\n{outLng}",

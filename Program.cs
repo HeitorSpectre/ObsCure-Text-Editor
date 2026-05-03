@@ -49,7 +49,13 @@ internal static class Program
                 for (int i = 2; i < args.Length; i++)
                 {
                     if (args[i] == "--game" && i + 1 < args.Length)
-                        forced = args[++i] == "ob1" ? GameType.Obscure1 : GameType.Obscure2;
+                        forced = args[++i] switch
+                        {
+                            "ob1" => GameType.Obscure1,
+                            "ob2" => GameType.Obscure2,
+                            "fe" or "finalexam" => GameType.FinalExam,
+                            _ => GameType.Unknown
+                        };
                     else if (args[i] == "--encoding" && i + 1 < args.Length)
                         encoding = args[++i];
                     else if (!args[i].StartsWith("--"))
@@ -62,7 +68,8 @@ internal static class Program
                 {
                     GameType.Obscure1 => ObscureLng.ExtractOb1ToTxt(lng, outTxt),
                     GameType.Obscure2 => ObscureLng.ExtractOb2ToTxt(lng, outTxt, encoding),
-                    _ => throw new InvalidOperationException("Unknown game type — pass --game ob1|ob2.")
+                    GameType.FinalExam => ObscureLng.ExtractFinalExamToTxt(lng, outTxt),
+                    _ => throw new InvalidOperationException("Unknown game type — pass --game ob1|ob2|fe.")
                 };
                 Console.WriteLine($"OK — extracted {n} entries → {outTxt}");
                 return 0;
@@ -82,7 +89,13 @@ internal static class Program
                 for (int i = 3; i < args.Length; i++)
                 {
                     if (args[i] == "--game" && i + 1 < args.Length)
-                        forced = args[++i] == "ob1" ? GameType.Obscure1 : GameType.Obscure2;
+                        forced = args[++i] switch
+                        {
+                            "ob1" => GameType.Obscure1,
+                            "ob2" => GameType.Obscure2,
+                            "fe" or "finalexam" => GameType.FinalExam,
+                            _ => GameType.Unknown
+                        };
                     else if (args[i] == "--encoding" && i + 1 < args.Length)
                         encoding = args[++i];
                     else if (args[i] == "--add-null")
@@ -95,14 +108,17 @@ internal static class Program
                     string sniff = File.ReadAllText(txt);
                     if (sniff.Contains("game = ob1")) game = GameType.Obscure1;
                     else if (sniff.Contains("game = ob2")) game = GameType.Obscure2;
+                    else if (sniff.Contains("game = finalexam")) game = GameType.FinalExam;
                 }
                 if (game == GameType.Unknown)
-                    throw new InvalidOperationException("Could not determine game — pass --game ob1|ob2.");
+                    throw new InvalidOperationException("Could not determine game — pass --game ob1|ob2|fe.");
 
-                if (game == GameType.Obscure1)
-                    ObscureLng.RebuildOb1FromTxt(txt, outLng);
-                else
-                    ObscureLng.RebuildOb2FromTxt(txt, outLng, encoding, addNull);
+                switch (game)
+                {
+                    case GameType.Obscure1: ObscureLng.RebuildOb1FromTxt(txt, outLng); break;
+                    case GameType.Obscure2: ObscureLng.RebuildOb2FromTxt(txt, outLng, encoding, addNull); break;
+                    case GameType.FinalExam: ObscureLng.RebuildFinalExamFromTxt(txt, outLng); break;
+                }
 
                 Console.WriteLine($"OK — rebuilt → {outLng}");
                 return 0;
@@ -120,7 +136,13 @@ internal static class Program
                 for (int i = 2; i < args.Length; i++)
                 {
                     if (args[i] == "--game" && i + 1 < args.Length)
-                        forced = args[++i] == "ob1" ? GameType.Obscure1 : GameType.Obscure2;
+                        forced = args[++i] switch
+                        {
+                            "ob1" => GameType.Obscure1,
+                            "ob2" => GameType.Obscure2,
+                            "fe" or "finalexam" => GameType.FinalExam,
+                            _ => GameType.Unknown
+                        };
                     else if (args[i] == "--encoding" && i + 1 < args.Length)
                         encoding = args[++i];
                 }
@@ -138,6 +160,11 @@ internal static class Program
                     {
                         ObscureLng.ExtractOb2ToTxt(lng, tmpTxt, encoding);
                         ObscureLng.RebuildOb2FromTxt(tmpTxt, tmpLng, encoding, false);
+                    }
+                    else if (game == GameType.FinalExam)
+                    {
+                        ObscureLng.ExtractFinalExamToTxt(lng, tmpTxt);
+                        ObscureLng.RebuildFinalExamFromTxt(tmpTxt, tmpLng);
                     }
                     else
                     {

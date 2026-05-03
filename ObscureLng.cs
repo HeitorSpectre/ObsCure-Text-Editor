@@ -11,7 +11,8 @@ public enum GameType
 {
     Unknown,
     Obscure1,
-    Obscure2
+    Obscure2,
+    FinalExam
 }
 
 public static class ObscureLng
@@ -27,6 +28,8 @@ public static class ObscureLng
         uint aLe = BinaryPrimitives.ReadUInt32LittleEndian(head);
         uint bLe = BinaryPrimitives.ReadUInt32LittleEndian(head[4..]);
 
+        // Final Exam: v1=1, magic in 0x01_??_00_00 family (e.g. 0x01400000, 0x01800000)
+        if (aLe == 1 && (bLe & 0xFF00FFFFu) == 0x01000000u) return GameType.FinalExam;
         if (aBe == 0 && bBe >= 1 && bBe <= 100000) return GameType.Obscure1;
         if (bLe >= 1 && bLe <= 10000) return GameType.Obscure2;
         return GameType.Unknown;
@@ -460,5 +463,215 @@ public static class ObscureLng
         Span<byte> b = stackalloc byte[2];
         BinaryPrimitives.WriteUInt16BigEndian(b, v);
         bw.Write(b);
+    }
+
+    // ---------------- FINAL EXAM ----------------
+    //
+    // File layout (all little-endian):
+    //   Header (20 bytes):
+    //     uint32 v1            (always 1)
+    //     uint32 magic         (e.g. 0x01400000 / 0x01800000 — preserved verbatim)
+    //     uint32 totalSubCount (sum of all sub-entry counts)
+    //     uint32 entryCount    (# of entries in entry table)
+    //     uint32 glyphCount    (# of UTF-32 chars in the font glyph table)
+    //   Glyph table: glyphCount * uint32 (UTF-32 LE)
+    //   Entry table: entryCount * variable-size record:
+    //     uint32 sid           (string ID, e.g. 0x01402000)
+    //     uint32 subCount
+    //     subCount * (uint32 sub_a, uint32 sub_b)
+    //         sub_a low 17 bits = byte offset into string data
+    //         sub_a high 15 bits = tag/flags (preserved verbatim)
+    //         sub_b is always 0 in observed files
+    //   Data section:
+    //     uint32 dataSize
+    //     dataSize bytes of CP1252 null-terminated strings
+    //
+    // Strings in the data section are written sequentially in entry order,
+    // so on rebuild we can recompute offsets from scratch and combine with
+    // each sub's preserved tag.
+
+    public static int ExtractFinalExamToTxt(string lngPath, string txtPath)
+    {
+        var sb = new StringBuilder();
+        var stringEnc = new UTF8Encoding(false);
+        int subTotal = 0;
+
+        byte[] data = File.ReadAllBytes(lngPath);
+        int pos = 0;
+
+        uint v1        = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(pos)); pos += 4;
+        uint magic     = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(pos)); pos += 4;
+        uint totalSubs = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(pos)); pos += 4;
+        uint entryCnt  = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(pos)); pos += 4;
+        uint glyphCnt  = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(pos)); pos += 4;
+
+        var glyphs = new uint[glyphCnt];
+        for (int i = 0; i < glyphCnt; i++)
+        {
+            glyphs[i] = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(pos));
+            pos += 4;
+        }
+
+        var entries = new List<(uint Sid, List<(uint Tag, int Offset)> Subs)>((int)entryCnt);
+        for (int i = 0; i < entryCnt; i++)
+        {
+            uint sid = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(pos)); pos += 4;
+            uint cnt = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(pos)); pos += 4;
+            var subs = new List<(uint Tag, int Offset)>((int)cnt);
+            for (int s = 0; s < cnt; s++)
+            {
+                uint a = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(pos)); pos += 4;
+                uint b = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(pos)); pos += 4;
+                int offset = (int)(a & 0x0001FFFFu);
+                uint tag = a >> 17;
+                subs.Add((tag, offset));
+                subTotal++;
+                _ = b; // observed always 0; preserved as 0 on rebuild
+            }
+            entries.Add((sid, subs));
+        }
+
+        uint dataSize = BinaryPrimitives.ReadUInt32LittleEndian(data.AsSpan(pos)); pos += 4;
+        byte[] strData = new byte[dataSize];
+        Array.Copy(data, pos, strData, 0, (int)dataSize);
+
+        sb.Append("### LANGUAGE\n");
+        sb.Append("game = finalexam\n");
+        sb.Append($"v1 = {v1}\n");
+        sb.Append($"magic = 0x{magic:X8}\n");
+        var glyphHex = new StringBuilder();
+        for (int i = 0; i < glyphs.Length; i++)
+        {
+            if (i > 0) glyphHex.Append(',');
+            glyphHex.Append("0x").Append(glyphs[i].ToString("X"));
+        }
+        sb.Append($"glyphs = {glyphHex}\n");
+        sb.Append("###\n\n");
+
+        for (int i = 0; i < entries.Count; i++)
+        {
+            var (sid, subs) = entries[i];
+            sb.Append("### ENTRY\n");
+            sb.Append($"index = {i}\n");
+            sb.Append($"sid = 0x{sid:X8}\n");
+            sb.Append("###\n");
+            foreach (var (tag, offset) in subs)
+            {
+                int end = Array.IndexOf(strData, (byte)0, offset);
+                if (end < 0) end = strData.Length;
+                string text = stringEnc.GetString(strData, offset, end - offset)
+                                    .Replace("\n", "\\n").Replace("\r", "\\r");
+                sb.Append($"[tag=0x{tag:X4}] {text}\n");
+            }
+            sb.Append('\n');
+        }
+
+        File.WriteAllText(txtPath, sb.ToString(), new UTF8Encoding(false));
+        return subTotal;
+    }
+
+    public static void RebuildFinalExamFromTxt(string txtPath, string outLngPath)
+    {
+        string content = File.ReadAllText(txtPath, new UTF8Encoding(false));
+        var (header, entries) = ParseTxt(content);
+
+        uint v1 = header.TryGetValue("v1", out var v) ? uint.Parse(v) : 1u;
+        uint magic = ParseHexOrDec(header["magic"]);
+        var glyphs = new List<uint>();
+        if (header.TryGetValue("glyphs", out var gs))
+        {
+            foreach (var part in gs.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                glyphs.Add(ParseHexOrDec(part.Trim()));
+        }
+
+        // Parse entries — each body line begins with "[tag=0xNNNN] "
+        var ordered = entries
+            .Select(e => new
+            {
+                Index = int.Parse(e.Header["index"]),
+                Sid = ParseHexOrDec(e.Header["sid"]),
+                Subs = ParseFinalExamBody(e.Body)
+            })
+            .OrderBy(x => x.Index)
+            .ToList();
+
+        var stringEnc = new UTF8Encoding(false);
+
+        // Build string data section sequentially.
+        var dataStream = new MemoryStream();
+        var subRecords = new List<(uint Sid, List<(uint Tag, int Offset)> Subs)>();
+        foreach (var e in ordered)
+        {
+            var subs = new List<(uint Tag, int Offset)>();
+            foreach (var (tag, text) in e.Subs)
+            {
+                int offset = (int)dataStream.Length;
+                byte[] bytes = stringEnc.GetBytes(text);
+                dataStream.Write(bytes, 0, bytes.Length);
+                dataStream.WriteByte(0);
+                subs.Add((tag, offset));
+            }
+            subRecords.Add((e.Sid, subs));
+        }
+        byte[] strData = dataStream.ToArray();
+        uint totalSubs = (uint)subRecords.Sum(r => r.Subs.Count);
+
+        using var fs = File.Create(outLngPath);
+        using var bw = new BinaryWriter(fs);
+
+        bw.Write(v1);
+        bw.Write(magic);
+        bw.Write(totalSubs);
+        bw.Write((uint)subRecords.Count);
+        bw.Write((uint)glyphs.Count);
+        foreach (var g in glyphs) bw.Write(g);
+
+        foreach (var (sid, subs) in subRecords)
+        {
+            bw.Write(sid);
+            bw.Write((uint)subs.Count);
+            foreach (var (tag, offset) in subs)
+            {
+                if (offset > 0x1FFFF)
+                    throw new InvalidOperationException(
+                        $"String offset {offset} exceeds 17-bit limit (sid 0x{sid:X8}). " +
+                        "Total translated text is too large for the format.");
+                uint a = ((tag & 0x7FFFu) << 17) | ((uint)offset & 0x0001FFFFu);
+                bw.Write(a);
+                bw.Write(0u);
+            }
+        }
+
+        bw.Write((uint)strData.Length);
+        bw.Write(strData);
+    }
+
+    private static List<(uint Tag, string Text)> ParseFinalExamBody(string body)
+    {
+        var result = new List<(uint, string)>();
+        foreach (var rawLine in body.Split('\n'))
+        {
+            string line = rawLine;
+            if (line.Length == 0) continue;
+            // Match "[tag=0xNNNN] "
+            if (!line.StartsWith("[tag=")) continue;
+            int end = line.IndexOf(']');
+            if (end < 0) continue;
+            string tagStr = line.Substring(5, end - 5).Trim(); // skip "[tag="
+            uint tag = ParseHexOrDec(tagStr);
+            string text = line.Substring(end + 1);
+            if (text.StartsWith(" ")) text = text.Substring(1);
+            text = text.Replace("\\r", "\r").Replace("\\n", "\n");
+            result.Add((tag, text));
+        }
+        return result;
+    }
+
+    private static uint ParseHexOrDec(string s)
+    {
+        s = s.Trim();
+        if (s.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+            return Convert.ToUInt32(s.Substring(2), 16);
+        return uint.Parse(s);
     }
 }
