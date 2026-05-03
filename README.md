@@ -10,6 +10,9 @@ ObsCure Text Editor is a tool for editing text from this franchise, designed for
 Obscure 1:
 <img width="928" height="548" alt="image" src="https://github.com/user-attachments/assets/d7c5aedc-ccbd-4f62-95cd-d159bdec82bf" />
 
+Obscure 2:
+<img width="928" height="548" alt="image" src="https://github.com/user-attachments/assets/19aa6718-13a3-4026-8787-817d38287977" />
+
 Final Examn:
 <img width="928" height="548" alt="image" src="https://github.com/user-attachments/assets/899320ae-fa1b-4f42-8b3d-a3d469ef2d2f" />
 
