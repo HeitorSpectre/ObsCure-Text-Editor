@@ -16,7 +16,7 @@ public class MainForm : Form
 
     public MainForm()
     {
-        Text = "Obscure 1 / 2 .lng tool — Extract / Rebuild";
+        Text = "ObsCure Text Editor";
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(460, 170);
         FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -37,9 +37,9 @@ public class MainForm : Form
         };
         _gameCombo.Items.AddRange(new object[]
         {
-            "Obscure 1 (all platforms — big-endian)",
-            "Obscure 2 (all platforms — little-endian)",
-            "Final Exam (PC / PS3)"
+            "Obscure 1 (all platforms - big-endian)",
+            "Obscure 2 (all platforms - little-endian)",
+            "Final Exam (all platforms)"
         });
         _gameCombo.SelectedIndex = 0;
 
