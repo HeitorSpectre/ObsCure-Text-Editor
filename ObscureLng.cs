@@ -184,7 +184,7 @@ public static class ObscureLng
         ("÷",       "[L1]"),
         ("Æ",       "[R1]"),
         ("Ð",       "[Triangle]"),
-        ("Ã",       "[X]"),
+        ("Ã",       "[Cross]"),
         ("Ø",       "[Select]"),
         ("Â",       "[Circle]"),
         ("À",       "[Square]"),
