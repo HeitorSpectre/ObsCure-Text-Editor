@@ -1,4 +1,15 @@
 # ObsCure-Text-Editor
+
+![Version](https://img.shields.io/github/v/release/HeitorSpectre/ObsCure-Text-Editor?style=for-the-badge&label=Version)
+![Downloads](https://img.shields.io/github/downloads/HeitorSpectre/ObsCure-Text-Editor/total?style=for-the-badge&label=Downloads)
+![Latest Downloads](https://img.shields.io/github/downloads/HeitorSpectre/ObsCure-Text-Editor/latest/total?style=for-the-badge&label=Latest%20Downloads)
+![Stars](https://img.shields.io/github/stars/HeitorSpectre/ObsCure-Text-Editor?style=for-the-badge&label=Stars)
+![License](https://img.shields.io/github/license/HeitorSpectre/ObsCure-Text-Editor?style=for-the-badge&label=License)
+
+![Platform](https://img.shields.io/badge/Platform-PC%20%7C%20PS2%20%7C%20PS3%20%7C%20Xbox%20%7C%20Xbox%20360%20%7C%20Wii-blue?style=for-the-badge)
+![Language](https://img.shields.io/badge/C%23-.NET%209-purple?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge)
+
 ObsCure Text Editor is a tool for editing text from this franchise, designed for Nintendo Wii, PC, PS2, PSP, PS3 and XBOX.
 
 ## SUPPORTED GAMES
